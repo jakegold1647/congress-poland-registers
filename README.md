@@ -88,6 +88,15 @@ Only rights-cleared material will be published. Every page in the corpus will
 carry its source and license in `DATASET_CARD.md`. Planned data license:
 CC BY 4.0 where source rights permit. Code: MIT.
 
+## Related repositories
+
+- [`aktreader`](https://github.com/jakegold1647/aktreader) — a local,
+  uncertainty-honest reader for these registers; the kind of system this
+  benchmark exists to measure.
+- [`aktreader-research`](https://github.com/jakegold1647/aktreader-research) —
+  the evaluation harness around it: blind-reader waves, consensus labels, and
+  the measurement contracts this corpus's methodology grew out of.
+
 ## Contributing ground truth
 
 Validated transcriptions paired with page images are the scarcest resource in
