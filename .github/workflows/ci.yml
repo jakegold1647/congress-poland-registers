@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows is not optional here. The corpus is Cyrillic and Polish, and
+        # a Windows console defaults to a code page that cannot encode either;
+        # that difference has already produced one crash the Linux runner
+        # could not have caught.
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.9", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install test dependencies
+        run: python -m pip install pytest
+
+      - name: Test
+        run: python -m pytest tests/ -q
+
+      - name: Evaluate the toy corpus end to end
+        run: >
+          python eval/evaluate.py
+          --gt examples/toy-corpus/gt
+          --hyp examples/toy-corpus/hyp-weak
+          --split examples/toy-corpus/split.txt
+          --annotations examples/toy-corpus/annotations

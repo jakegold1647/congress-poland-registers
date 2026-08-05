@@ -9,6 +9,25 @@ Russian Cyrillic, in semi-tabular civil-register layouts.
 published yet.** This repository is the public home for the work; the structure
 below is the contract for what v0.1 will contain. Target for v0.1: fall 2026.
 
+The **evaluation tooling is finished and runnable today**, against a synthetic
+toy corpus in `examples/`. You can see exactly what will be measured, and
+argue with it, before any real page is published — which is the right order,
+since a benchmark's metrics should be settled before its data can influence
+them.
+
+```
+python eval/evaluate.py \
+    --gt examples/toy-corpus/gt \
+    --hyp examples/toy-corpus/hyp-weak \
+    --split examples/toy-corpus/split.txt \
+    --annotations examples/toy-corpus/annotations
+```
+
+That run reports a mean page CER of 0.088 — about 91% of characters correct —
+and a name exact-match rate of 16.7%. Five of six names wrong, on a system a
+single averaged accuracy figure would call decent. That gap is the entire
+reason this benchmark exists.
+
 ## Why this exists
 
 There is no independently constructed, openly licensed benchmark for
@@ -35,14 +54,33 @@ ancestor. Accordingly, evaluation here reports per-page CER/WER distributions
 ## Repository layout
 
 ```
-data/images/     page images (empty until rights-cleared material lands)
-data/pagexml/    PAGE XML ground truth
-data/text/       plain-text diplomatic transcriptions
-splits/          train.txt / val.txt / test.txt — page-id lists
-docs/            transcription and normalization policies
-eval/            evaluation tooling
-DATASET_CARD.md  provenance, rights, and composition
+data/images/       page images (empty until rights-cleared material lands)
+data/pagexml/      PAGE XML ground truth
+data/text/         plain-text diplomatic transcriptions
+data/annotations/  name spans and uncertainty flags (docs/annotation-format.md)
+splits/            train.txt / val.txt / test.txt — page-id lists
+docs/              transcription, normalization, and annotation policies
+eval/              evaluation tooling
+examples/          synthetic toy corpus — not benchmark data
+tests/             tests for the evaluator
+DATASET_CARD.md    provenance, rights, and composition
 ```
+
+## What is measured
+
+- **Page CER and WER**, reported as a distribution — min, p25, median, mean,
+  p90, max, and the worst-decile mean. Never a bare mean; a single number
+  hides the pages that matter.
+- **Name CER and exact-match rate**, scored separately for personal and place
+  names, with every error listed in full rather than summarised away.
+- **Both sides of the uncertainty question.** Where a transcriber flagged
+  characters as unreadable, metrics are reported both including those
+  positions and with them forgiven. The honest result is the pair.
+
+Transcriptions stay clean: name spans and uncertainty flags live in a JSON
+sidecar, specified in [docs/annotation-format.md](docs/annotation-format.md).
+
+Run the tests with `python -m pytest tests/`.
 
 ## Rights
 

@@ -1,0 +1,24 @@
+{
+  "page_id": "toy-serock-002",
+  "policy_version": "v0",
+  "spans": [
+    {
+      "start": 17,
+      "end": 40,
+      "type": "person",
+      "text": "Сроль Лейбъ Гольдштейнъ"
+    },
+    {
+      "start": 56,
+      "end": 63,
+      "type": "place",
+      "text": "Сероцка"
+    }
+  ],
+  "uncertain": [
+    [
+      9,
+      10
+    ]
+  ]
+}

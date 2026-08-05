@@ -1,0 +1,18 @@
+{
+  "page_id": "toy-pultusk-003",
+  "policy_version": "v0",
+  "spans": [
+    {
+      "start": 15,
+      "end": 35,
+      "type": "person",
+      "text": "Ryfka Leą Rozencwajg"
+    },
+    {
+      "start": 61,
+      "end": 69,
+      "type": "place",
+      "text": "Pułtusku"
+    }
+  ]
+}

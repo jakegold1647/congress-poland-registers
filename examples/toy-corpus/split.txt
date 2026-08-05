@@ -1,0 +1,4 @@
+# Toy split. Not part of the benchmark; see examples/README.md.
+toy-pultusk-001
+toy-serock-002
+toy-pultusk-003

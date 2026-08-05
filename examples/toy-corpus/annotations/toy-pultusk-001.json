@@ -1,0 +1,18 @@
+{
+  "page_id": "toy-pultusk-001",
+  "policy_version": "v0",
+  "spans": [
+    {
+      "start": 65,
+      "end": 85,
+      "type": "person",
+      "text": "Chaim Bär Goldsztejn"
+    },
+    {
+      "start": 21,
+      "end": 29,
+      "type": "place",
+      "text": "Pułtusku"
+    }
+  ]
+}
