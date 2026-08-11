@@ -52,7 +52,7 @@ jobs:
             fi
             AUTHOR="$(git log -1 --format='%an <%ae>' "$sha")"
             case "$(printf '%s' "$AUTHOR" | tr '[:upper:]' '[:lower:]')" in
-              *claude*|*anthropic*|*copilot*|*[bot]*)
+              *claude*|*anthropic*|*copilot*)
                 echo "::error::Commit $(git rev-parse --short "$sha") has a disallowed author identity: $AUTHOR"
                 FAILED=1 ;;
             esac
