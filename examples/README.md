@@ -8,6 +8,10 @@ They exist so the evaluation tooling is runnable and inspectable before the
 real corpus is published — you can see exactly what the benchmark measures and
 what its output looks like without waiting for rights-cleared material.
 
+Add `--json toy-evaluation.json` to save the versioned report. Its input manifest hashes the
+ordered synthetic page selection and the exact ground-truth, hypothesis, and annotation bytes;
+the hashes identify this fixture, not real benchmark evidence.
+
 ## Run it
 
 ```

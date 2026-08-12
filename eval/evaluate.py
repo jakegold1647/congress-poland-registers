@@ -31,6 +31,10 @@ Method notes, so numbers computed here can be reproduced independently:
 - p25 and p90 use the nearest-rank definition: rank `ceil(p * n)`, with
   one-based ranks. The worst-decile mean uses the highest `ceil(n / 10)`
   page values and reports that page count as `worst_decile_n`.
+- The input manifest records the ordered semantic page selection and SHA-256
+  of the exact bytes decoded for ground truth, hypotheses, and sidecars. Its
+  digest is canonical compact JSON with sorted object keys and UTF-8 encoding;
+  filesystem paths are deliberately excluded.
 - To score a name span, the corresponding region of the hypothesis must be
   located first. That correspondence is derived from difflib's matching
   blocks, which is a *heuristic* alignment. The span itself is then scored
@@ -45,6 +49,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import hashlib
 import json
 import math
 import statistics
@@ -54,7 +59,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 POLICY_DEFAULT = "v0"
-REPORT_VERSION = "evaluation-1.1.0"
+REPORT_VERSION = "evaluation-1.2.0"
+INPUT_MANIFEST_VERSION = "evaluation-inputs-1.0.0"
 
 
 # --------------------------------------------------------------------------
@@ -159,14 +165,20 @@ class AnnotationError(Exception):
     """Raised when a sidecar disagrees with the transcription it annotates."""
 
 
-def load_annotation(path: Path, reference: str) -> Annotation:
+def load_annotation(
+    path: Path,
+    reference: str,
+    *,
+    content: bytes | None = None,
+) -> Annotation:
     """Load and validate a sidecar against the text it annotates.
 
     Offsets that have drifted out of sync with the transcription would
     silently corrupt the name numbers, so a mismatch is fatal rather than a
     warning.
     """
-    raw = json.loads(path.read_text(encoding="utf-8"))
+    source = path.read_bytes() if content is None else content
+    raw = json.loads(source.decode("utf-8"))
     spans: list[Span] = []
     for item in raw.get("spans", []):
         start, end = int(item["start"]), int(item["end"])
@@ -302,6 +314,20 @@ def read_split(path: Path) -> list[str]:
     return ids
 
 
+def _sha256_bytes(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
+
+
+def _input_manifest_digest(manifest: dict) -> str:
+    canonical = json.dumps(
+        manifest,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return _sha256_bytes(canonical)
+
+
 def evaluate(gt_dir: Path, hyp_dir: Path, page_ids: list[str],
              ann_dir: Path | None, policy_version: str) -> dict:
     if ann_dir is not None and not ann_dir.is_dir():
@@ -310,25 +336,44 @@ def evaluate(gt_dir: Path, hyp_dir: Path, page_ids: list[str],
     page_rows = []
     span_rows = []
     missing = []
+    input_pages = []
 
     for page_id in page_ids:
         gt_path = gt_dir / f"{page_id}.txt"
         hyp_path = hyp_dir / f"{page_id}.txt"
-        if not gt_path.exists():
+        ann_path = ann_dir / f"{page_id}.json" if ann_dir is not None else None
+        gt_bytes = gt_path.read_bytes() if gt_path.is_file() else None
+        hyp_bytes = hyp_path.read_bytes() if hyp_path.is_file() else None
+        ann_bytes = (
+            ann_path.read_bytes()
+            if ann_path is not None and ann_path.is_file()
+            else None
+        )
+        input_pages.append({
+            "page_id": page_id,
+            "ground_truth_sha256": (
+                _sha256_bytes(gt_bytes) if gt_bytes is not None else None
+            ),
+            "hypothesis_sha256": (
+                _sha256_bytes(hyp_bytes) if hyp_bytes is not None else None
+            ),
+            "annotation_sha256": (
+                _sha256_bytes(ann_bytes) if ann_bytes is not None else None
+            ),
+        })
+        if gt_bytes is None:
             missing.append(f"ground truth missing: {gt_path}")
             continue
-        if not hyp_path.exists():
+        if hyp_bytes is None:
             missing.append(f"hypothesis missing: {hyp_path}")
             continue
 
-        ref = gt_path.read_text(encoding="utf-8")
-        got = hyp_path.read_text(encoding="utf-8")
+        ref = gt_bytes.decode("utf-8")
+        got = hyp_bytes.decode("utf-8")
 
         ann = Annotation()
-        if ann_dir is not None:
-            ann_path = ann_dir / f"{page_id}.json"
-            if ann_path.exists():
-                ann = load_annotation(ann_path, ref)
+        if ann_path is not None and ann_bytes is not None:
+            ann = load_annotation(ann_path, ref, content=ann_bytes)
 
         row = {
             "page_id": page_id,
@@ -345,9 +390,18 @@ def evaluate(gt_dir: Path, hyp_dir: Path, page_ids: list[str],
             scored["page_id"] = page_id
             span_rows.append(scored)
 
+    input_manifest = {
+        "manifest_version": INPUT_MANIFEST_VERSION,
+        "report_version": REPORT_VERSION,
+        "policy_version": policy_version,
+        "annotation_mode": "SIDECARS" if ann_dir is not None else "NONE",
+        "pages": input_pages,
+    }
     report = {
         "report_version": REPORT_VERSION,
         "policy_version": policy_version,
+        "input_manifest": input_manifest,
+        "input_manifest_sha256": _input_manifest_digest(input_manifest),
         "pages_scored": len(page_rows),
         "pages_requested": len(page_ids),
         "missing": missing,
@@ -404,6 +458,7 @@ def render(report: dict) -> str:
             f"(policy {report['policy_version']}; {report['report_version']})"
         ),
         f"pages scored: {report['pages_scored']} of {report['pages_requested']}",
+        f"input manifest: {report['input_manifest_sha256']}",
         "",
     ]
 

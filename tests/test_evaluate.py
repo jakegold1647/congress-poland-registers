@@ -12,7 +12,9 @@ in those scripts.
 
 from __future__ import annotations
 
+import hashlib
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -24,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from eval.evaluate import (  # noqa: E402
     Annotation,
     AnnotationError,
+    INPUT_MANIFEST_VERSION,
     REPORT_VERSION,
     cer,
     cer_ignoring,
@@ -331,7 +334,35 @@ def test_evaluate_end_to_end(corpus):
     root, gt, hyp, ann = corpus
     report = evaluate(gt, hyp, ["p1", "p2"], ann, "v0")
 
-    assert report["report_version"] == REPORT_VERSION == "evaluation-1.1.0"
+    assert report["report_version"] == REPORT_VERSION == "evaluation-1.2.0"
+    manifest = report["input_manifest"]
+    assert manifest["manifest_version"] == INPUT_MANIFEST_VERSION
+    assert INPUT_MANIFEST_VERSION == "evaluation-inputs-1.0.0"
+    assert manifest["report_version"] == REPORT_VERSION
+    assert manifest["policy_version"] == "v0"
+    assert manifest["annotation_mode"] == "SIDECARS"
+    assert [page["page_id"] for page in manifest["pages"]] == ["p1", "p2"]
+    assert all(
+        len(page[key]) == 64
+        for page in manifest["pages"]
+        for key in (
+            "ground_truth_sha256",
+            "hypothesis_sha256",
+            "annotation_sha256",
+        )
+    )
+    expected_manifest_digest = hashlib.sha256(
+        json.dumps(
+            manifest,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    assert report["input_manifest_sha256"] == expected_manifest_digest
+    assert manifest["pages"][0]["ground_truth_sha256"] == hashlib.sha256(
+        (gt / "p1.txt").read_bytes()
+    ).hexdigest()
     assert report["pages_scored"] == 2
     assert report["missing"] == []
     assert report["page_cer"]["min"] == 0.0
@@ -388,6 +419,53 @@ def test_evaluate_without_annotations_still_scores_pages(corpus):
     assert "names" not in report
     assert "page_cer_ignoring_uncertain" not in report
     assert "uncertainty" not in report
+    assert report["input_manifest"]["annotation_mode"] == "NONE"
+    assert all(
+        page["annotation_sha256"] is None
+        for page in report["input_manifest"]["pages"]
+    )
+
+
+def test_input_manifest_is_identical_after_checkout_relocation(corpus):
+    root, gt, hyp, ann = corpus
+    relocated = root / "relocated"
+    relocated_gt = shutil.copytree(gt, relocated / "gt")
+    relocated_hyp = shutil.copytree(hyp, relocated / "hyp")
+    relocated_ann = shutil.copytree(ann, relocated / "ann")
+
+    first = evaluate(gt, hyp, ["p1", "p2"], ann, "v0")
+    second = evaluate(
+        relocated_gt,
+        relocated_hyp,
+        ["p1", "p2"],
+        relocated_ann,
+        "v0",
+    )
+
+    assert first["input_manifest"] == second["input_manifest"]
+    assert first["input_manifest_sha256"] == second["input_manifest_sha256"]
+
+
+def test_input_manifest_digest_changes_with_hypothesis_bytes(corpus):
+    _, gt, hyp, ann = corpus
+    before = evaluate(gt, hyp, ["p1", "p2"], ann, "v0")
+    p1 = hyp / "p1.txt"
+    p1.write_text(p1.read_text(encoding="utf-8") + "x", encoding="utf-8")
+
+    after = evaluate(gt, hyp, ["p1", "p2"], ann, "v0")
+
+    before_pages = {page["page_id"]: page for page in before["input_manifest"]["pages"]}
+    after_pages = {page["page_id"]: page for page in after["input_manifest"]["pages"]}
+    assert before_pages["p1"]["ground_truth_sha256"] == (
+        after_pages["p1"]["ground_truth_sha256"]
+    )
+    assert before_pages["p1"]["annotation_sha256"] == (
+        after_pages["p1"]["annotation_sha256"]
+    )
+    assert before_pages["p1"]["hypothesis_sha256"] != (
+        after_pages["p1"]["hypothesis_sha256"]
+    )
+    assert before["input_manifest_sha256"] != after["input_manifest_sha256"]
 
 
 def test_evaluate_rejects_a_missing_annotation_directory(corpus):
@@ -409,12 +487,14 @@ def test_main_writes_json_and_exits_zero(corpus, capsys):
     assert "Names" in captured
     payload = json.loads(out.read_text(encoding="utf-8"))
     assert payload["pages_scored"] == 2
-    assert payload["report_version"] == "evaluation-1.1.0"
+    assert payload["report_version"] == "evaluation-1.2.0"
+    assert len(payload["input_manifest_sha256"]) == 64
     assert payload["policy_version"] == "v0"
     assert payload["page_cer"]["n"] == payload["page_cer_ignoring_uncertain"]["n"]
     assert payload["uncertainty"]["same_page_denominator"] is True
     assert "1 flagged character on 1/2 pages" in captured
     assert "worst_decile_mean (n=1)" in captured
+    assert f"input manifest: {payload['input_manifest_sha256']}" in captured
     assert "strict and forgiving CER use the same scored pages" in captured
 
 

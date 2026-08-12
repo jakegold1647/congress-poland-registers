@@ -98,8 +98,12 @@ DATASET_CARD.md    provenance, rights, and composition
 Transcriptions stay clean: name spans and uncertainty flags live in a JSON
 sidecar, specified in [docs/annotation-format.md](docs/annotation-format.md).
 Machine-readable evaluator output identifies these semantics as
-`report_version: evaluation-1.1.0`; the normalization policy remains a separate,
+`report_version: evaluation-1.2.0`; the normalization policy remains a separate,
 explicit field because report shape and transcription policy are different contracts.
+Each report also carries a path-independent `input_manifest`: the ordered page selection and
+SHA-256 of every ground-truth, hypothesis, and annotation file actually read. Its canonical
+`input_manifest_sha256` is printed in human output as well as JSON, so moving an identical corpus
+does not change its identity while changing any scored byte does.
 
 The [corpus validator](docs/corpus-validation.md) fails closed when the canonical
 train/validation/test split contract or a sidecar's link to its transcription has

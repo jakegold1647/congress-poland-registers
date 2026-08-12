@@ -47,6 +47,8 @@ Every published page gets a row. No row, no page.
   is the ceiling-sized top 10%, and its page count is part of the report.
 - Strict and uncertainty-forgiven CER use the identical scored-page set; every
   report states the number of flagged pages and reference characters.
+- Evaluation artifacts bind the ordered page selection and exact ground-truth,
+  hypothesis, and annotation bytes in a path-independent SHA-256 manifest.
 - Separate error accounting for tokens tagged as personal names and place
   names — the corpus's reason for existing.
 - Test split is held out: no system tuning against it, ever.
