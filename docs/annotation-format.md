@@ -61,4 +61,4 @@ is the normal case for a half-legible surname.
   character-for-character. This is the headline genealogical number: a
   surname is either right or it is somebody's wrong ancestor.
 
-See `eval/evaluate.py --help` and `docs/evaluation.md`.
+See `eval/evaluate.py --help` and [the evaluation overview](../README.md#what-is-measured).

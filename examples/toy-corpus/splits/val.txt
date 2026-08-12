@@ -1,0 +1,2 @@
+# Synthetic fixture only — not benchmark validation data.
+toy-pultusk-003

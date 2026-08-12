@@ -18,6 +18,18 @@ python eval/evaluate.py \
     --annotations examples/toy-corpus/annotations
 ```
 
+Validate the fixture's corpus structure independently of any system output:
+
+```
+python eval/validate_corpus.py \
+    --text examples/toy-corpus/gt \
+    --annotations examples/toy-corpus/annotations \
+    --splits examples/toy-corpus/splits
+```
+
+The three files under `splits/` exercise the real train/validation/test contract.
+They do not turn these invented pages into benchmark data.
+
 Two hypothesis sets are provided:
 
 - `hyp-strong/` — near-perfect output; drops one Polish diacritic.

@@ -268,6 +268,15 @@ def test_read_split_skips_comments_and_blanks(tmp_path):
     assert read_split(path) == ["pultusk-1878-013", "serock-1881-002"]
 
 
+def test_read_split_accepts_utf8_bom_before_first_comment(tmp_path):
+    path = tmp_path / "test.txt"
+    path.write_bytes(
+        b"\xef\xbb\xbf# exported on Windows\r\npultusk-1878-013\r\n"
+    )
+
+    assert read_split(path) == ["pultusk-1878-013"]
+
+
 # --------------------------------------------------------------------------
 # End-to-end
 # --------------------------------------------------------------------------

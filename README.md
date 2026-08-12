@@ -13,9 +13,9 @@ Russian Cyrillic, in semi-tabular civil-register layouts.
 published yet.** This repository is the public home for the work; the structure
 below is the contract for what v0.1 will contain. Target for v0.1: fall 2026.
 
-The **evaluation tooling is finished and runnable today**, against a synthetic
-toy corpus in `examples/`. You can see exactly what will be measured, and
-argue with it, before any real page is published — which is the right order,
+The **evaluation and corpus-integrity tooling are runnable today**, against a
+synthetic toy corpus in `examples/`. You can see exactly what will be measured,
+and argue with it, before any real page is published — which is the right order,
 since a benchmark's metrics should be settled before its data can influence
 them.
 
@@ -27,10 +27,21 @@ python eval/evaluate.py \
     --annotations examples/toy-corpus/annotations
 ```
 
-That run reports a mean page CER of 0.088 — about 91% of characters correct —
-and a name exact-match rate of 16.7%. Five of six names wrong, on a system a
-single averaged accuracy figure would call decent. That gap is the entire
-reason this benchmark exists.
+Before a corpus is scored or published, the separate structural validator checks
+split leakage, missing and unassigned text, orphan sidecars, policy identity, and
+annotation drift:
+
+```
+python eval/validate_corpus.py \
+    --text examples/toy-corpus/gt \
+    --annotations examples/toy-corpus/annotations \
+    --splits examples/toy-corpus/splits
+```
+
+The weak-hypothesis evaluation reports a mean page CER of 0.088 — about 91% of
+characters correct — and a name exact-match rate of 16.7%. Five of six names
+are wrong on a system a single averaged accuracy figure would call decent. That
+gap is the entire reason this benchmark exists.
 
 ## Why this exists
 
@@ -64,9 +75,9 @@ data/text/         plain-text diplomatic transcriptions
 data/annotations/  name spans and uncertainty flags (docs/annotation-format.md)
 splits/            train.txt / val.txt / test.txt — page-id lists
 docs/              transcription, normalization, and annotation policies
-eval/              evaluation tooling
+eval/              evaluation and corpus-integrity tooling
 examples/          synthetic toy corpus — not benchmark data
-tests/             tests for the evaluator
+tests/             tests for the evaluator and corpus validator
 DATASET_CARD.md    provenance, rights, and composition
 ```
 
@@ -83,6 +94,11 @@ DATASET_CARD.md    provenance, rights, and composition
 
 Transcriptions stay clean: name spans and uncertainty flags live in a JSON
 sidecar, specified in [docs/annotation-format.md](docs/annotation-format.md).
+
+The [corpus validator](docs/corpus-validation.md) fails closed when the canonical
+train/validation/test split contract or a sidecar's link to its transcription has
+drifted. It validates structure, not rights or transcription quality; those remain
+human-review gates in the dataset card.
 
 Run the tests with `python -m pytest tests/`.
 

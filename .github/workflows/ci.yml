@@ -29,6 +29,13 @@ jobs:
       - name: Test
         run: python -m pytest tests/ -q
 
+      - name: Validate the toy corpus structure
+        run: >
+          python eval/validate_corpus.py
+          --text examples/toy-corpus/gt
+          --annotations examples/toy-corpus/annotations
+          --splits examples/toy-corpus/splits
+
       - name: Evaluate the toy corpus end to end
         run: >
           python eval/evaluate.py

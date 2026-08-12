@@ -40,6 +40,8 @@ Every published page gets a row. No row, no page.
 
 ## Evaluation protocol (summary)
 
+- Pre-publication validation fails on cross-split leakage, incomplete ground truth,
+  orphan sidecars, annotation drift, or policy-version mismatch.
 - CER/WER computed per page; report distribution (min/median/mean/worst decile),
   never the mean alone.
 - Separate error accounting for tokens tagged as personal names and place

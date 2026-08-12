@@ -287,9 +287,9 @@ def distribution(values: list[float]) -> dict:
 # --------------------------------------------------------------------------
 
 def read_split(path: Path) -> list[str]:
-    """Page ids, one per line. Blank lines and # comments are ignored."""
+    """Page ids, one per line. Blank lines, comments, and an optional BOM are ignored."""
     ids = []
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in path.read_text(encoding="utf-8-sig").splitlines():
         line = line.strip()
         if line and not line.startswith("#"):
             ids.append(line)
