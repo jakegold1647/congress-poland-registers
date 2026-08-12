@@ -1,4 +1,8 @@
-# Congress Poland Registers
+# Congress Poland Registers — Benchmark Dataset
+
+> **Repository role:** `congress-poland-registers` is the independent, rights-cleared benchmark
+> dataset project. It is not the AKT Reader application and it is not that application's
+> evidence/methodology lab.
 
 An open benchmark corpus for handwritten 19th–early 20th century Jewish vital
 records from Congress Poland, beginning with the towns of **Pułtusk** and
@@ -88,14 +92,17 @@ Only rights-cleared material will be published. Every page in the corpus will
 carry its source and license in `DATASET_CARD.md`. Planned data license:
 CC BY 4.0 where source rights permit. Code: MIT.
 
-## Related repositories
+## Which repository do I need?
 
-- [`aktreader`](https://github.com/jakegold1647/aktreader) — a local,
-  uncertainty-honest reader for these registers; the kind of system this
-  benchmark exists to measure.
-- [`aktreader-research`](https://github.com/jakegold1647/aktreader-research) —
-  the evaluation harness around it: blind-reader waves, consensus labels, and
-  the measurement contracts this corpus's methodology grew out of.
+| Repository | Role | Use it when you want to... |
+| --- | --- | --- |
+| [`aktreader`](https://github.com/jakegold1647/aktreader) | **AKT Reader — Application** | Run or improve the local scan-to-evidence reader. |
+| [`aktreader-research`](https://github.com/jakegold1647/aktreader-research) | **AKT Reader — Evidence Lab** | Audit its claims, reproduce evaluations, inspect labels, or develop evidence-aware research utilities. |
+| **`congress-poland-registers` (you are here)** | **Congress Poland Registers — Benchmark Dataset** | Build or evaluate against an independent, rights-cleared HTR corpus. |
+
+The benchmark is independent of the reader and its evidence lab so that the system under test
+does not define its own yardstick. The dataset is still under construction; its synthetic
+evaluator fixture is not benchmark data.
 
 ## Contributing ground truth
 
