@@ -407,6 +407,22 @@ def _validate_page_ids(page_ids: list[str]) -> None:
         first_position[page_id] = position
 
 
+def _validate_report_output(
+    output: Path,
+    *,
+    split: Path,
+    input_directories: list[Path],
+) -> None:
+    target = output.resolve()
+    input_roots = [directory.resolve() for directory in input_directories]
+    if target == split.resolve() or any(
+        target == root or root in target.parents for root in input_roots
+    ):
+        raise EvaluationInputError(
+            f"JSON report must not overwrite evaluation inputs: {output}"
+        )
+
+
 def _sha256_bytes(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
@@ -665,6 +681,21 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{label} does not exist: {path}", file=sys.stderr)
             return 1
 
+    if args.json is not None:
+        try:
+            _validate_report_output(
+                args.json,
+                split=args.split,
+                input_directories=[
+                    args.gt,
+                    args.hyp,
+                    *([args.annotations] if args.annotations is not None else []),
+                ],
+            )
+        except EvaluationInputError as exc:
+            print(f"evaluation input error: {exc}", file=sys.stderr)
+            return 1
+
     page_ids = read_split(args.split)
     if not page_ids:
         print(f"no page ids in {args.split}", file=sys.stderr)
@@ -683,8 +714,12 @@ def main(argv: list[str] | None = None) -> int:
     print(render(report))
 
     if args.json:
-        args.json.write_text(
-            json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+        try:
+            args.json.write_text(
+                json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+        except OSError as exc:
+            print(f"could not write JSON report to {args.json}: {exc}", file=sys.stderr)
+            return 1
         print(f"\nJSON report written to {args.json}")
 
     if report["missing"]:

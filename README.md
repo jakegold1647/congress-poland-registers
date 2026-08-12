@@ -106,6 +106,9 @@ Each report also carries a path-independent `input_manifest`: the ordered page s
 SHA-256 of every ground-truth, hypothesis, and annotation file actually read. Its canonical
 `input_manifest_sha256` is printed in human output as well as JSON, so moving an identical corpus
 does not change its identity while changing any scored byte does.
+The optional JSON report must be written outside the ground-truth, hypothesis, and annotation
+directories and may not replace the split file. The evaluator rejects those destinations before
+scoring so a report cannot modify its own evidence.
 
 The evaluator rejects duplicate page IDs before reading corpus files, so a repeated split line
 cannot silently give one page extra weight. It also accepts only bare filename stems—never paths

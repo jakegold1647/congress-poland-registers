@@ -558,6 +558,59 @@ def test_main_writes_json_and_exits_zero(corpus, capsys):
     assert "strict and forgiving CER use the same scored pages" in captured
 
 
+@pytest.mark.parametrize(
+    "target_kind",
+    ["split", "ground_truth", "hypothesis", "annotation", "ground_truth_directory"],
+)
+def test_main_refuses_json_output_that_can_modify_evaluation_inputs(
+    corpus, capsys, target_kind
+):
+    root, gt, hyp, ann = corpus
+    targets = {
+        "split": root / "split.txt",
+        "ground_truth": gt / "p1.txt",
+        "hypothesis": hyp / "p1.txt",
+        "annotation": ann / "p1.json",
+        "ground_truth_directory": gt / "report.json",
+    }
+    target = targets[target_kind]
+    before = target.read_bytes() if target.exists() else None
+
+    code = main([
+        "--gt", str(gt),
+        "--hyp", str(hyp),
+        "--split", str(root / "split.txt"),
+        "--annotations", str(ann),
+        "--json", str(target),
+    ])
+
+    assert code == 1
+    assert "JSON report must not overwrite evaluation inputs" in capsys.readouterr().err
+    if before is None:
+        assert not target.exists()
+    else:
+        assert target.read_bytes() == before
+
+
+def test_main_reports_json_write_failure_without_traceback(corpus, capsys):
+    root, gt, hyp, ann = corpus
+    output = root / "missing-parent" / "report.json"
+
+    code = main([
+        "--gt", str(gt),
+        "--hyp", str(hyp),
+        "--split", str(root / "split.txt"),
+        "--annotations", str(ann),
+        "--json", str(output),
+    ])
+
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "could not write JSON report" in captured.err
+    assert "Traceback" not in captured.err
+    assert not output.exists()
+
+
 def test_main_exits_nonzero_on_missing_hypothesis_dir(corpus, capsys):
     root, gt, _, _ = corpus
     code = main(["--gt", str(gt), "--hyp", str(root / "nope"),
