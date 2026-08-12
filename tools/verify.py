@@ -37,6 +37,8 @@ def verification_steps(python: str | None = None) -> tuple[VerificationStep, ...
                 f"{toy}/gt",
                 "--annotations",
                 f"{toy}/annotations",
+                "--manifest",
+                f"{toy}/provenance.jsonl",
                 "--splits",
                 f"{toy}/splits",
                 "--policy-version",

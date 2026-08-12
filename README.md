@@ -35,6 +35,7 @@ annotation drift:
 python eval/validate_corpus.py \
     --text examples/toy-corpus/gt \
     --annotations examples/toy-corpus/annotations \
+    --manifest examples/toy-corpus/provenance.jsonl \
     --splits examples/toy-corpus/splits
 ```
 
@@ -65,6 +66,7 @@ ancestor. Accordingly, evaluation here reports per-page CER/WER distributions
 - An evaluation script reporting per-page CER/WER distribution and a
   name-level error taxonomy (`eval/`)
 - Dataset card with provenance and rights for every page
+- A versioned machine-readable provenance row for every page
 
 ## Repository layout
 
@@ -73,6 +75,7 @@ data/images/       page images (empty until rights-cleared material lands)
 data/pagexml/      PAGE XML ground truth
 data/text/         plain-text diplomatic transcriptions
 data/annotations/  name spans and uncertainty flags (docs/annotation-format.md)
+data/provenance.jsonl  per-page source, rights, and ground-truth declarations
 splits/            train.txt / val.txt / test.txt — page-id lists
 docs/              transcription, normalization, and annotation policies
 eval/              evaluation and corpus-integrity tooling
@@ -116,9 +119,10 @@ or suffixed filenames—keeping every read inside the declared input directories
 even when the evaluator is called directly without a preceding corpus-validation command.
 
 The [corpus validator](docs/corpus-validation.md) fails closed when the canonical
-train/validation/test split contract or a sidecar's link to its transcription has
-drifted. It validates structure, not rights or transcription quality; those remain
-human-review gates in the dataset card.
+train/validation/test split contract, its [machine-readable provenance ledger](docs/provenance-ledger.md),
+or a sidecar's link to its transcription has drifted. It validates that provenance and rights
+declarations exist and agree on page and policy identity; people still review whether those
+declarations and the transcriptions are correct.
 
 For a contributor checkout, install `requirements-dev.txt` and run `python tools/verify.py`. That
 single cross-platform command runs the tests, structural validation, and weak toy evaluation used
@@ -126,9 +130,10 @@ by CI. See [CONTRIBUTING.md](CONTRIBUTING.md) for the data and metric-change bou
 
 ## Rights
 
-Only rights-cleared material will be published. Every page in the corpus will
-carry its source and license in `DATASET_CARD.md`. Planned data license:
-CC BY 4.0 where source rights permit. Code: MIT.
+Only rights-cleared material will be published. Every page in the corpus must have a valid row in
+`data/provenance.jsonl`; `DATASET_CARD.md` remains the human-readable collection summary. The
+validator enforces the row's presence, not its legal conclusion. Planned data license: CC BY 4.0
+where source rights permit. Code: MIT.
 
 ## Which repository do I need?
 

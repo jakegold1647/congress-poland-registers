@@ -25,6 +25,11 @@ Poland (Pułtusk, Serock; Polish and Russian-Cyrillic; 19th–early 20th c.).
 
 Every published page gets a row. No row, no page.
 
+The authoritative machine-readable rows live in [`data/provenance.jsonl`](data/provenance.jsonl)
+under the versioned [provenance-ledger contract](docs/provenance-ledger.md). The file is empty at
+v0.0 because no benchmark page is published. This table remains the human-readable collection
+summary; fixture rows belong only under `examples/toy-corpus/` and never appear here.
+
 | page id | source archive / collection | year | script | rights basis | GT method |
 |---|---|---|---|---|---|
 | — | — | — | — | — | — |
@@ -40,8 +45,8 @@ Every published page gets a row. No row, no page.
 
 ## Evaluation protocol (summary)
 
-- Pre-publication validation fails on cross-split leakage, incomplete ground truth,
-  orphan sidecars, annotation drift, or policy-version mismatch.
+- Pre-publication validation fails on cross-split leakage, missing or orphaned provenance rows,
+  incomplete ground truth, orphan sidecars, annotation drift, or policy-version mismatch.
 - CER/WER computed per page; report distribution (min/nearest-rank
   percentiles/median/mean/worst decile), never the mean alone. The worst decile
   is the ceiling-sized top 10%, and its page count is part of the report.

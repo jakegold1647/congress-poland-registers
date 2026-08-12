@@ -12,6 +12,10 @@ Add `--json toy-evaluation.json` to save the versioned report. Its input manifes
 ordered synthetic page selection and the exact ground-truth, hypothesis, and annotation bytes;
 the hashes identify this fixture, not real benchmark evidence.
 
+`provenance.jsonl` separately exercises the publication ledger contract. Every row declares
+`material_kind: "synthetic_fixture"`, names a repository fixture path rather than an archive, and
+states that the text was authored rather than transcribed.
+
 ## Run it
 
 ```
@@ -28,6 +32,7 @@ Validate the fixture's corpus structure independently of any system output:
 python eval/validate_corpus.py \
     --text examples/toy-corpus/gt \
     --annotations examples/toy-corpus/annotations \
+    --manifest examples/toy-corpus/provenance.jsonl \
     --splits examples/toy-corpus/splits
 ```
 

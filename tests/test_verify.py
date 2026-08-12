@@ -15,6 +15,10 @@ def test_verification_steps_cover_the_public_contract_in_order() -> None:
     ]
     assert steps[0].command == ("python", "-m", "pytest", "tests/", "-q")
     assert "eval/validate_corpus.py" in steps[1].command
+    manifest_index = steps[1].command.index("--manifest")
+    assert steps[1].command[manifest_index + 1] == (
+        "examples/toy-corpus/provenance.jsonl"
+    )
     assert "eval/evaluate.py" in steps[2].command
     for step in steps[1:]:
         policy_index = step.command.index("--policy-version")

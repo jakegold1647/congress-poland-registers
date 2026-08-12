@@ -61,9 +61,10 @@ inspect the ordered commands without executing them.
 - Never move or edit a test page in response to a system's output. Split assignment must be made
   independently of the system under evaluation.
 
-The machine-readable provenance ledger is intentionally tracked as
-[issue #1](https://github.com/jakegold1647/congress-poland-registers/issues/1). Until that work
-lands, `DATASET_CARD.md` remains the human gate: no row, no page.
+Every proposed benchmark page needs one row in `data/provenance.jsonl` under the
+[provenance-ledger contract](docs/provenance-ledger.md). The validator enforces one row per split
+page, while the maintainer reviews the source locator, redistribution basis, and ground-truth
+method. Machine-readable does not mean automatically rights-cleared: no accepted row, no page.
 
 ## Change-specific acceptance
 
