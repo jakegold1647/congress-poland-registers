@@ -105,6 +105,11 @@ SHA-256 of every ground-truth, hypothesis, and annotation file actually read. It
 `input_manifest_sha256` is printed in human output as well as JSON, so moving an identical corpus
 does not change its identity while changing any scored byte does.
 
+The evaluator rejects duplicate page IDs before reading corpus files, so a repeated split line
+cannot silently give one page extra weight. It also accepts only bare filename stems—never paths
+or suffixed filenames—keeping every read inside the declared input directories. These checks run
+even when the evaluator is called directly without a preceding corpus-validation command.
+
 The [corpus validator](docs/corpus-validation.md) fails closed when the canonical
 train/validation/test split contract or a sidecar's link to its transcription has
 drifted. It validates structure, not rights or transcription quality; those remain

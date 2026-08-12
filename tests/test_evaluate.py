@@ -412,6 +412,21 @@ def test_evaluate_reports_missing_hypothesis(corpus):
     assert any("p3" in m for m in report["missing"])
 
 
+def test_evaluate_rejects_duplicate_page_ids(corpus):
+    _, gt, hyp, ann = corpus
+
+    with pytest.raises(ValueError, match="duplicate page id 'p1'"):
+        evaluate(gt, hyp, ["p1", "p1"], ann, "v0")
+
+
+@pytest.mark.parametrize("page_id", ["../p1", "nested/p1", r"nested\p1", "p1.txt"])
+def test_evaluate_rejects_page_ids_that_are_not_bare_stems(corpus, page_id):
+    _, gt, hyp, ann = corpus
+
+    with pytest.raises(ValueError, match="bare filename stem"):
+        evaluate(gt, hyp, [page_id], ann, "v0")
+
+
 def test_evaluate_without_annotations_still_scores_pages(corpus):
     _, gt, hyp, _ = corpus
     report = evaluate(gt, hyp, ["p1", "p2"], None, "v0")
@@ -512,6 +527,16 @@ def test_main_exits_nonzero_on_empty_split(corpus, tmp_path, capsys):
     code = main(["--gt", str(gt), "--hyp", str(hyp), "--split", str(empty)])
     assert code == 1
     assert "no page ids" in capsys.readouterr().err
+
+
+def test_main_exits_nonzero_on_duplicate_page_id(corpus, tmp_path, capsys):
+    _, gt, hyp, _ = corpus
+    duplicate = write(tmp_path / "duplicate.txt", "p1\np1\n")
+
+    code = main(["--gt", str(gt), "--hyp", str(hyp), "--split", str(duplicate)])
+
+    assert code == 1
+    assert "duplicate page id 'p1'" in capsys.readouterr().err
 
 
 def test_main_exits_nonzero_on_bad_annotation(corpus, capsys):

@@ -39,6 +39,10 @@ The validator checks:
 A sidecar remains optional for an individual page, as specified in
 [the annotation format](annotation-format.md). Missing sidecars are not findings.
 
+The evaluator independently enforces the same bare-stem and no-duplicates rule for the page list
+it receives. The validator remains the broader pre-publication check, but direct evaluation cannot
+double-weight a repeated page or use a page ID as a path outside the declared input directories.
+
 ## Output contract
 
 Human-readable findings go to stdout. `--json` writes the same result as a deterministic report

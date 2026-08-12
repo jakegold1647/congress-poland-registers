@@ -23,9 +23,19 @@ import sys
 from pathlib import Path
 
 try:  # Package import in tests and ``python -m eval.validate_corpus``.
-    from .evaluate import AnnotationError, _force_utf8_output, load_annotation
+    from .evaluate import (
+        AnnotationError,
+        _force_utf8_output,
+        _valid_page_id,
+        load_annotation,
+    )
 except ImportError:  # Direct documented invocation: ``python eval/validate_corpus.py``.
-    from evaluate import AnnotationError, _force_utf8_output, load_annotation
+    from evaluate import (
+        AnnotationError,
+        _force_utf8_output,
+        _valid_page_id,
+        load_annotation,
+    )
 
 
 REPORT_VERSION = "corpus-validation-1.0.0"
@@ -56,16 +66,6 @@ def _add_finding(
     if line is not None:
         finding["line"] = line
     findings.append(finding)
-
-
-def _valid_page_id(page_id: str) -> bool:
-    return bool(
-        page_id
-        and page_id not in {".", ".."}
-        and "/" not in page_id
-        and "\\" not in page_id
-        and not page_id.endswith((".txt", ".json"))
-    )
 
 
 def _read_split(path: Path, name: str, findings: list[dict]) -> list[str]:

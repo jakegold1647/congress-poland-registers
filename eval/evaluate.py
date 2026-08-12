@@ -35,6 +35,9 @@ Method notes, so numbers computed here can be reproduced independently:
   of the exact bytes decoded for ground truth, hypotheses, and sidecars. Its
   digest is canonical compact JSON with sorted object keys and UTF-8 encoding;
   filesystem paths are deliberately excluded.
+- Page ids must be unique bare filename stems. This prevents one page from
+  silently receiving extra weight and keeps all reads inside the declared
+  ground-truth, hypothesis, and annotation directories.
 - To score a name span, the corresponding region of the hypothesis must be
   located first. That correspondence is derived from difflib's matching
   blocks, which is a *heuristic* alignment. The span itself is then scored
@@ -61,6 +64,10 @@ from pathlib import Path
 POLICY_DEFAULT = "v0"
 REPORT_VERSION = "evaluation-1.2.0"
 INPUT_MANIFEST_VERSION = "evaluation-inputs-1.0.0"
+
+
+class EvaluationInputError(ValueError):
+    """Raised when an evaluation selection cannot be scored safely."""
 
 
 # --------------------------------------------------------------------------
@@ -314,6 +321,32 @@ def read_split(path: Path) -> list[str]:
     return ids
 
 
+def _valid_page_id(page_id: str) -> bool:
+    return bool(
+        page_id
+        and page_id not in {".", ".."}
+        and "/" not in page_id
+        and "\\" not in page_id
+        and not page_id.endswith((".txt", ".json"))
+    )
+
+
+def _validate_page_ids(page_ids: list[str]) -> None:
+    first_position: dict[str, int] = {}
+    for position, page_id in enumerate(page_ids, 1):
+        if not _valid_page_id(page_id):
+            raise EvaluationInputError(
+                f"invalid page id {page_id!r} at position {position}: "
+                "page ids must be bare filename stems without suffixes or path separators"
+            )
+        if page_id in first_position:
+            raise EvaluationInputError(
+                f"duplicate page id {page_id!r} at positions "
+                f"{first_position[page_id]} and {position}"
+            )
+        first_position[page_id] = position
+
+
 def _sha256_bytes(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
@@ -330,6 +363,7 @@ def _input_manifest_digest(manifest: dict) -> str:
 
 def evaluate(gt_dir: Path, hyp_dir: Path, page_ids: list[str],
              ann_dir: Path | None, policy_version: str) -> dict:
+    _validate_page_ids(page_ids)
     if ann_dir is not None and not ann_dir.is_dir():
         raise AnnotationError(f"annotation directory does not exist: {ann_dir}")
 
@@ -573,6 +607,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         report = evaluate(args.gt, args.hyp, page_ids,
                           args.annotations, args.policy_version)
+    except EvaluationInputError as exc:
+        print(f"evaluation input error: {exc}", file=sys.stderr)
+        return 1
     except AnnotationError as exc:
         print(f"annotation error: {exc}", file=sys.stderr)
         return 1
