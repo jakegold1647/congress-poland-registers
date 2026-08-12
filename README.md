@@ -89,11 +89,16 @@ DATASET_CARD.md    provenance, rights, and composition
 - **Name CER and exact-match rate**, scored separately for personal and place
   names, with every error listed in full rather than summarised away.
 - **Both sides of the uncertainty question.** Where a transcriber flagged
-  characters as unreadable, metrics are reported both including those
-  positions and with them forgiven. The honest result is the pair.
+  characters as unreadable, page CER is reported both including those
+  positions and with them forgiven. Both distributions use the same scored
+  pages, and the report states how many pages and reference characters carry
+  flags. The honest result is the paired comparison, not either endpoint.
 
 Transcriptions stay clean: name spans and uncertainty flags live in a JSON
 sidecar, specified in [docs/annotation-format.md](docs/annotation-format.md).
+Machine-readable evaluator output identifies these semantics as
+`report_version: evaluation-1.0.0`; the normalization policy remains a separate,
+explicit field because report shape and transcription policy are different contracts.
 
 The [corpus validator](docs/corpus-validation.md) fails closed when the canonical
 train/validation/test split contract or a sidecar's link to its transcription has

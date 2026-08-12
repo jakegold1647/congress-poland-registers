@@ -52,8 +52,11 @@ is the normal case for a half-legible surname.
 ## How the evaluator uses it
 
 - **Page CER/WER** are computed on the full text, exactly, by edit distance.
-  Reported twice: including uncertain positions, and with uncertain reference
-  characters treated as always-matching.
+  CER is reported twice: including uncertain positions, and with uncertain
+  reference characters treated as always-matching. Pages without uncertainty flags keep
+  their strict CER in the forgiving distribution, so both CER distributions
+  always use the same scored-page denominator. The report also counts flagged
+  pages and reference characters.
 - **Name CER** is computed per span. The corresponding region of the
   hypothesis is located by block-matching the two texts, then that region is
   scored against the reference span by exact edit distance.

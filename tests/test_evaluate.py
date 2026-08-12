@@ -24,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from eval.evaluate import (  # noqa: E402
     Annotation,
     AnnotationError,
+    REPORT_VERSION,
     cer,
     cer_ignoring,
     distribution,
@@ -312,12 +313,19 @@ def test_evaluate_end_to_end(corpus):
     root, gt, hyp, ann = corpus
     report = evaluate(gt, hyp, ["p1", "p2"], ann, "v0")
 
+    assert report["report_version"] == REPORT_VERSION == "evaluation-1.0.0"
     assert report["pages_scored"] == 2
     assert report["missing"] == []
     assert report["page_cer"]["min"] == 0.0
     assert report["page_cer"]["max"] > 0.0
     # Pages are sorted worst-first so the bad page is impossible to miss.
     assert report["pages"][0]["page_id"] == "p2"
+    assert report["uncertainty"] == {
+        "pages_compared": 2,
+        "pages_with_flags": 1,
+        "flagged_reference_characters": 1,
+        "same_page_denominator": True,
+    }
 
     names = report["names"]
     assert names["n"] == 3
@@ -335,11 +343,16 @@ def test_evaluate_forgiving_cer_is_never_worse(corpus):
     report = evaluate(gt, hyp, ["p1", "p2"], ann, "v0")
     strict = report["page_cer"]["mean"]
     forgiving = report["page_cer_ignoring_uncertain"]
-    # Only p2 carries flags, so the forgiving distribution has one entry and
-    # it must not exceed that page's strict score.
-    assert forgiving["n"] == 1
+    # Only p2 carries flags, but both distributions retain both pages so their
+    # aggregate values are directly comparable.
+    assert forgiving["n"] == report["page_cer"]["n"] == 2
+    assert forgiving["mean"] <= strict
+    p1 = next(r for r in report["pages"] if r["page_id"] == "p1")
     p2 = next(r for r in report["pages"] if r["page_id"] == "p2")
-    assert forgiving["max"] <= p2["cer"]
+    assert p1["cer_ignoring_uncertain"] == p1["cer"]
+    assert p1["uncertain_chars"] == 0
+    assert p2["cer_ignoring_uncertain"] <= p2["cer"]
+    assert p2["uncertain_chars"] == 1
     assert strict > 0
 
 
@@ -355,6 +368,15 @@ def test_evaluate_without_annotations_still_scores_pages(corpus):
     report = evaluate(gt, hyp, ["p1", "p2"], None, "v0")
     assert report["pages_scored"] == 2
     assert "names" not in report
+    assert "page_cer_ignoring_uncertain" not in report
+    assert "uncertainty" not in report
+
+
+def test_evaluate_rejects_a_missing_annotation_directory(corpus):
+    root, gt, hyp, _ = corpus
+
+    with pytest.raises(AnnotationError, match="annotation directory does not exist"):
+        evaluate(gt, hyp, ["p1", "p2"], root / "missing-annotations", "v0")
 
 
 def test_main_writes_json_and_exits_zero(corpus, capsys):
@@ -369,7 +391,12 @@ def test_main_writes_json_and_exits_zero(corpus, capsys):
     assert "Names" in captured
     payload = json.loads(out.read_text(encoding="utf-8"))
     assert payload["pages_scored"] == 2
+    assert payload["report_version"] == "evaluation-1.0.0"
     assert payload["policy_version"] == "v0"
+    assert payload["page_cer"]["n"] == payload["page_cer_ignoring_uncertain"]["n"]
+    assert payload["uncertainty"]["same_page_denominator"] is True
+    assert "1 flagged character on 1/2 pages" in captured
+    assert "strict and forgiving CER use the same scored pages" in captured
 
 
 def test_main_exits_nonzero_on_missing_hypothesis_dir(corpus, capsys):
@@ -396,6 +423,15 @@ def test_main_exits_nonzero_on_bad_annotation(corpus, capsys):
                  "--split", str(root / "split.txt"), "--annotations", str(ann)])
     assert code == 1
     assert "annotation error" in capsys.readouterr().err
+
+
+def test_main_exits_nonzero_on_missing_annotation_directory(corpus, capsys):
+    root, gt, hyp, _ = corpus
+    code = main(["--gt", str(gt), "--hyp", str(hyp),
+                 "--split", str(root / "split.txt"),
+                 "--annotations", str(root / "missing-annotations")])
+    assert code == 1
+    assert "annotation directory does not exist" in capsys.readouterr().err
 
 
 def test_script_runs_as_a_subprocess(corpus):

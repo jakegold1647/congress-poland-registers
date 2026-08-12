@@ -60,6 +60,9 @@ name error list is printed in full rather than summarised.
 ## The uncertainty column
 
 `toy-serock-002` has its `ѣ` flagged as uncertain in the sidecar, so the
-report carries a second CER computed with that position forgiven. Both numbers
-are always shown. Which one is "the" score is a policy question, and the
+report carries a second CER computed with that position forgiven. The strict
+and forgiving distributions both contain all three scored pages; the other two
+pages simply retain their strict score. The report records one flagged character
+on one of three pages, making the two aggregate values a true paired comparison.
+Which endpoint governs a later headline score is a policy question, and the
 policy is not frozen yet — see `docs/normalization-policy.md`.

@@ -44,6 +44,8 @@ Every published page gets a row. No row, no page.
   orphan sidecars, annotation drift, or policy-version mismatch.
 - CER/WER computed per page; report distribution (min/median/mean/worst decile),
   never the mean alone.
+- Strict and uncertainty-forgiven CER use the identical scored-page set; every
+  report states the number of flagged pages and reference characters.
 - Separate error accounting for tokens tagged as personal names and place
   names — the corpus's reason for existing.
 - Test split is held out: no system tuning against it, ever.

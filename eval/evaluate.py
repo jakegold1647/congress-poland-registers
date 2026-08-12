@@ -9,9 +9,9 @@ The contract this script implements:
   in docs/annotation-format.md) are scored separately. A benchmark for
   genealogical records that buries name errors inside page-level CER is
   measuring the wrong thing.
-- Where the transcriber flagged characters as uncertain, every metric is
-  reported twice: including those positions, and with them treated as
-  always-matching. The honest range is the pair, not either endpoint.
+- Where the transcriber flagged characters as uncertain, page CER is reported
+  twice: including those positions, and with them treated as always-matching.
+  The honest range is the pair, not either endpoint.
 - The test split is read from splits/test.txt and is never used for tuning.
 
 Usage:
@@ -50,6 +50,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 POLICY_DEFAULT = "v0"
+REPORT_VERSION = "evaluation-1.0.0"
 
 
 # --------------------------------------------------------------------------
@@ -298,6 +299,9 @@ def read_split(path: Path) -> list[str]:
 
 def evaluate(gt_dir: Path, hyp_dir: Path, page_ids: list[str],
              ann_dir: Path | None, policy_version: str) -> dict:
+    if ann_dir is not None and not ann_dir.is_dir():
+        raise AnnotationError(f"annotation directory does not exist: {ann_dir}")
+
     page_rows = []
     span_rows = []
     missing = []
@@ -327,7 +331,7 @@ def evaluate(gt_dir: Path, hyp_dir: Path, page_ids: list[str],
             "wer": wer(ref, got),
             "ref_chars": len(ref),
         }
-        if ann.uncertain:
+        if ann_dir is not None:
             row["cer_ignoring_uncertain"] = cer_ignoring(ref, got, ann.uncertain)
             row["uncertain_chars"] = sum(e - s for s, e in ann.uncertain)
         page_rows.append(row)
@@ -337,6 +341,7 @@ def evaluate(gt_dir: Path, hyp_dir: Path, page_ids: list[str],
             span_rows.append(scored)
 
     report = {
+        "report_version": REPORT_VERSION,
         "policy_version": policy_version,
         "pages_scored": len(page_rows),
         "pages_requested": len(page_ids),
@@ -346,10 +351,17 @@ def evaluate(gt_dir: Path, hyp_dir: Path, page_ids: list[str],
         "pages": sorted(page_rows, key=lambda r: r["cer"], reverse=True),
     }
 
-    forgiving = [r["cer_ignoring_uncertain"] for r in page_rows
-                 if "cer_ignoring_uncertain" in r]
-    if forgiving:
+    if ann_dir is not None:
+        forgiving = [r["cer_ignoring_uncertain"] for r in page_rows]
         report["page_cer_ignoring_uncertain"] = distribution(forgiving)
+        report["uncertainty"] = {
+            "pages_compared": len(forgiving),
+            "pages_with_flags": sum(r["uncertain_chars"] > 0 for r in page_rows),
+            "flagged_reference_characters": sum(
+                r["uncertain_chars"] for r in page_rows
+            ),
+            "same_page_denominator": True,
+        }
 
     if span_rows:
         by_type: dict[str, list[dict]] = {}
@@ -382,7 +394,10 @@ def _fmt(value: float) -> str:
 
 def render(report: dict) -> str:
     lines = [
-        f"Congress Poland Registers — evaluation (policy {report['policy_version']})",
+        (
+            "Congress Poland Registers — evaluation "
+            f"(policy {report['policy_version']}; {report['report_version']})"
+        ),
         f"pages scored: {report['pages_scored']} of {report['pages_requested']}",
         "",
     ]
@@ -401,6 +416,16 @@ def render(report: dict) -> str:
     if "page_cer_ignoring_uncertain" in report:
         table("Page CER (uncertain positions forgiven)",
               report["page_cer_ignoring_uncertain"])
+        uncertainty = report["uncertainty"]
+        flagged = uncertainty["flagged_reference_characters"]
+        unit = "character" if flagged == 1 else "characters"
+        lines.append(
+            "Uncertainty coverage  "
+            f"{flagged} flagged {unit} on "
+            f"{uncertainty['pages_with_flags']}/{uncertainty['pages_compared']} pages"
+        )
+        lines.append("  strict and forgiving CER use the same scored pages")
+        lines.append("")
 
     names = report.get("names")
     if names:
