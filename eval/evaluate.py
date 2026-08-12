@@ -28,6 +28,9 @@ Method notes, so numbers computed here can be reproduced independently:
 
 - Page CER and WER are exact Levenshtein distances, normalised by the
   length of the reference (characters, and whitespace-delimited tokens).
+- p25 and p90 use the nearest-rank definition: rank `ceil(p * n)`, with
+  one-based ranks. The worst-decile mean uses the highest `ceil(n / 10)`
+  page values and reports that page count as `worst_decile_n`.
 - To score a name span, the corresponding region of the hypothesis must be
   located first. That correspondence is derived from difflib's matching
   blocks, which is a *heuristic* alignment. The span itself is then scored
@@ -43,6 +46,7 @@ from __future__ import annotations
 import argparse
 import difflib
 import json
+import math
 import statistics
 import sys
 import unicodedata
@@ -50,7 +54,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 POLICY_DEFAULT = "v0"
-REPORT_VERSION = "evaluation-1.0.0"
+REPORT_VERSION = "evaluation-1.1.0"
 
 
 # --------------------------------------------------------------------------
@@ -260,8 +264,8 @@ def _percentile(values: list[float], q: float) -> float:
     if not values:
         return float("nan")
     ordered = sorted(values)
-    idx = min(int(round(q * (len(ordered) - 1))), len(ordered) - 1)
-    return ordered[idx]
+    rank = max(1, min(math.ceil(q * len(ordered)), len(ordered)))
+    return ordered[rank - 1]
 
 
 def distribution(values: list[float]) -> dict:
@@ -269,7 +273,7 @@ def distribution(values: list[float]) -> dict:
     if not values:
         return {"n": 0}
     ordered = sorted(values)
-    decile = max(1, len(ordered) // 10)
+    decile = max(1, math.ceil(len(ordered) / 10))
     worst = ordered[-decile:]
     return {
         "n": len(ordered),
@@ -279,6 +283,7 @@ def distribution(values: list[float]) -> dict:
         "mean": statistics.fmean(ordered),
         "p90": _percentile(ordered, 0.90),
         "max": ordered[-1],
+        "worst_decile_n": decile,
         "worst_decile_mean": statistics.fmean(worst),
     }
 
@@ -408,7 +413,10 @@ def render(report: dict) -> str:
         lines.append(title)
         for key in ("min", "p25", "median", "mean", "p90", "max",
                     "worst_decile_mean"):
-            lines.append(f"  {key:<18} {_fmt(dist[key])}")
+            label = key
+            if key == "worst_decile_mean":
+                label = f"{key} (n={dist['worst_decile_n']})"
+            lines.append(f"  {label:<24} {_fmt(dist[key])}")
         lines.append("")
 
     table("Page CER", report["page_cer"])

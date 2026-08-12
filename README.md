@@ -84,8 +84,9 @@ DATASET_CARD.md    provenance, rights, and composition
 ## What is measured
 
 - **Page CER and WER**, reported as a distribution — min, p25, median, mean,
-  p90, max, and the worst-decile mean. Never a bare mean; a single number
-  hides the pages that matter.
+  p90, max, and the worst-decile mean. Percentiles use the standard nearest-rank
+  definition; the worst decile contains `ceil(page_count / 10)` pages and reports
+  that count. Never a bare mean; a single number hides the pages that matter.
 - **Name CER and exact-match rate**, scored separately for personal and place
   names, with every error listed in full rather than summarised away.
 - **Both sides of the uncertainty question.** Where a transcriber flagged
@@ -97,7 +98,7 @@ DATASET_CARD.md    provenance, rights, and composition
 Transcriptions stay clean: name spans and uncertainty flags live in a JSON
 sidecar, specified in [docs/annotation-format.md](docs/annotation-format.md).
 Machine-readable evaluator output identifies these semantics as
-`report_version: evaluation-1.0.0`; the normalization policy remains a separate,
+`report_version: evaluation-1.1.0`; the normalization policy remains a separate,
 explicit field because report shape and transcription policy are different contracts.
 
 The [corpus validator](docs/corpus-validation.md) fails closed when the canonical

@@ -237,7 +237,25 @@ def test_distribution_reports_shape_not_just_mean():
     assert dist["min"] == 0.0
     assert dist["max"] == 0.9
     assert dist["median"] == pytest.approx(0.45)
+    assert dist["worst_decile_n"] == 1
     assert dist["worst_decile_mean"] == pytest.approx(0.9)
+
+
+def test_distribution_uses_standard_nearest_rank_percentiles():
+    dist = distribution([0.0, 1.0, 2.0, 3.0])
+
+    assert dist["p25"] == 0.0
+    assert dist["p90"] == 3.0
+
+
+def test_worst_decile_uses_ceiling_page_count():
+    eleven = distribution([float(i) for i in range(11)])
+    seventy_five = distribution([float(i) for i in range(75)])
+
+    assert eleven["worst_decile_n"] == 2
+    assert eleven["worst_decile_mean"] == pytest.approx(9.5)
+    assert seventy_five["worst_decile_n"] == 8
+    assert seventy_five["worst_decile_mean"] == pytest.approx(70.5)
 
 
 def test_distribution_worst_decile_exposes_a_hidden_bad_page():
@@ -313,7 +331,7 @@ def test_evaluate_end_to_end(corpus):
     root, gt, hyp, ann = corpus
     report = evaluate(gt, hyp, ["p1", "p2"], ann, "v0")
 
-    assert report["report_version"] == REPORT_VERSION == "evaluation-1.0.0"
+    assert report["report_version"] == REPORT_VERSION == "evaluation-1.1.0"
     assert report["pages_scored"] == 2
     assert report["missing"] == []
     assert report["page_cer"]["min"] == 0.0
@@ -391,11 +409,12 @@ def test_main_writes_json_and_exits_zero(corpus, capsys):
     assert "Names" in captured
     payload = json.loads(out.read_text(encoding="utf-8"))
     assert payload["pages_scored"] == 2
-    assert payload["report_version"] == "evaluation-1.0.0"
+    assert payload["report_version"] == "evaluation-1.1.0"
     assert payload["policy_version"] == "v0"
     assert payload["page_cer"]["n"] == payload["page_cer_ignoring_uncertain"]["n"]
     assert payload["uncertainty"]["same_page_denominator"] is True
     assert "1 flagged character on 1/2 pages" in captured
+    assert "worst_decile_mean (n=1)" in captured
     assert "strict and forgiving CER use the same scored pages" in captured
 
 

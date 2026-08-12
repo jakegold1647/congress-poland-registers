@@ -42,8 +42,9 @@ Every published page gets a row. No row, no page.
 
 - Pre-publication validation fails on cross-split leakage, incomplete ground truth,
   orphan sidecars, annotation drift, or policy-version mismatch.
-- CER/WER computed per page; report distribution (min/median/mean/worst decile),
-  never the mean alone.
+- CER/WER computed per page; report distribution (min/nearest-rank
+  percentiles/median/mean/worst decile), never the mean alone. The worst decile
+  is the ceiling-sized top 10%, and its page count is part of the report.
 - Strict and uncertainty-forgiven CER use the identical scored-page set; every
   report states the number of flagged pages and reference characters.
 - Separate error accounting for tokens tagged as personal names and place
