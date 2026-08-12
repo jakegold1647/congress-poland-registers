@@ -100,7 +100,9 @@ train/validation/test split contract or a sidecar's link to its transcription ha
 drifted. It validates structure, not rights or transcription quality; those remain
 human-review gates in the dataset card.
 
-Run the tests with `python -m pytest tests/`.
+For a contributor checkout, install `requirements-dev.txt` and run `python tools/verify.py`. That
+single cross-platform command runs the tests, structural validation, and weak toy evaluation used
+by CI. See [CONTRIBUTING.md](CONTRIBUTING.md) for the data and metric-change boundaries.
 
 ## Rights
 
@@ -120,7 +122,13 @@ The benchmark is independent of the reader and its evidence lab so that the syst
 does not define its own yardstick. The dataset is still under construction; its synthetic
 evaluator fixture is not benchmark data.
 
-## Contributing ground truth
+## Contributing
+
+Start with [CONTRIBUTING.md](CONTRIBUTING.md). It lists the runnable verification gate, synthetic
+fixture rules, metric-change acceptance criteria, and the boundary that keeps unreviewed archive
+material out of pull requests.
+
+### Contributing ground truth
 
 Validated transcriptions paired with page images are the scarcest resource in
 this field. If your organization holds validated material from Congress Poland

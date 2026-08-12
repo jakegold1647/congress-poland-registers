@@ -24,22 +24,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install test dependencies
-        run: python -m pip install pytest
+        run: python -m pip install -r requirements-dev.txt
 
-      - name: Test
-        run: python -m pytest tests/ -q
-
-      - name: Validate the toy corpus structure
-        run: >
-          python eval/validate_corpus.py
-          --text examples/toy-corpus/gt
-          --annotations examples/toy-corpus/annotations
-          --splits examples/toy-corpus/splits
-
-      - name: Evaluate the toy corpus end to end
-        run: >
-          python eval/evaluate.py
-          --gt examples/toy-corpus/gt
-          --hyp examples/toy-corpus/hyp-weak
-          --split examples/toy-corpus/split.txt
-          --annotations examples/toy-corpus/annotations
+      - name: Run the contributor verification gate
+        run: python tools/verify.py
