@@ -174,6 +174,27 @@ def test_load_annotation_rejects_out_of_bounds_uncertain(tmp_path):
         load_annotation(sidecar, "short")
 
 
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        (b"{", "not valid UTF-8 JSON"),
+        (b"\xff", "not valid UTF-8 JSON"),
+        (b"[]", "root must be a JSON object"),
+        (b'{"spans": {}}', "spans must be a list"),
+        (b'{"spans": [{"start": "0", "end": 1}]}', "integer start and end"),
+        (b'{"uncertain": [[0]]}', "two-integer range"),
+    ],
+)
+def test_load_annotation_rejects_malformed_sidecar_shapes(
+    tmp_path, payload, message
+):
+    sidecar = tmp_path / "p.json"
+    sidecar.write_bytes(payload)
+
+    with pytest.raises(AnnotationError, match=message):
+        load_annotation(sidecar, "short")
+
+
 def test_offsets_are_character_not_byte_based(tmp_path):
     # "Pułtusk" is 7 characters but 8 UTF-8 bytes. A byte-offset reader
     # would mis-slice this and the declared-text check would fire.
@@ -312,6 +333,8 @@ def corpus(tmp_path):
     write(gt / "p1.txt", clean)
     write(hyp / "p1.txt", clean)
     write(ann / "p1.json", json.dumps({
+        "page_id": "p1",
+        "policy_version": "v0",
         "spans": [{"start": 8, "end": 17, "type": "person", "text": "Chaim Bär"},
                   {"start": 20, "end": 28, "type": "place", "text": "Pułtusku"}],
     }, ensure_ascii=False))
@@ -321,6 +344,8 @@ def corpus(tmp_path):
     write(gt / "p2.txt", bad_ref)
     write(hyp / "p2.txt", bad_hyp)
     write(ann / "p2.json", json.dumps({
+        "page_id": "p2",
+        "policy_version": "v0",
         "spans": [{"start": 9, "end": 32, "type": "person",
                    "text": "Сроль Лейбъ Гольдштейнъ"}],
         "uncertain": [[3, 4]],
@@ -490,6 +515,26 @@ def test_evaluate_rejects_a_missing_annotation_directory(corpus):
         evaluate(gt, hyp, ["p1", "p2"], root / "missing-annotations", "v0")
 
 
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("page_id", "other-page", "declares page_id 'other-page'; expected 'p1'"),
+        ("policy_version", "v1", "uses policy 'v1'; expected 'v0'"),
+    ],
+)
+def test_evaluate_rejects_annotation_identity_mismatch(
+    corpus, field, value, message
+):
+    _, gt, hyp, ann = corpus
+    path = ann / "p1.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload[field] = value
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(AnnotationError, match=message):
+        evaluate(gt, hyp, ["p1", "p2"], ann, "v0")
+
+
 def test_main_writes_json_and_exits_zero(corpus, capsys):
     root, gt, hyp, ann = corpus
     out = root / "report.json"
@@ -547,6 +592,19 @@ def test_main_exits_nonzero_on_bad_annotation(corpus, capsys):
                  "--split", str(root / "split.txt"), "--annotations", str(ann)])
     assert code == 1
     assert "annotation error" in capsys.readouterr().err
+
+
+def test_main_exits_nonzero_on_malformed_annotation(corpus, capsys):
+    root, gt, hyp, ann = corpus
+    (ann / "p1.json").write_text("{", encoding="utf-8")
+
+    code = main(["--gt", str(gt), "--hyp", str(hyp),
+                 "--split", str(root / "split.txt"), "--annotations", str(ann)])
+
+    assert code == 1
+    error = capsys.readouterr().err
+    assert "annotation error" in error
+    assert "p1.json: annotation is not valid UTF-8 JSON" in error
 
 
 def test_main_exits_nonzero_on_missing_annotation_directory(corpus, capsys):

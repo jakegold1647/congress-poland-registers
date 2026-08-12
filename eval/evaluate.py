@@ -38,6 +38,9 @@ Method notes, so numbers computed here can be reproduced independently:
 - Page ids must be unique bare filename stems. This prevents one page from
   silently receiving extra weight and keeps all reads inside the declared
   ground-truth, hypothesis, and annotation directories.
+- Annotation sidecars must be UTF-8 JSON objects with typed span/range data;
+  direct evaluation also requires their page and policy declarations to match
+  the selected page and requested normalization policy.
 - To score a name span, the corresponding region of the hypothesis must be
   located first. That correspondence is derived from difflib's matching
   blocks, which is a *heuristic* alignment. The span itself is then scored
@@ -169,7 +172,7 @@ class Annotation:
 
 
 class AnnotationError(Exception):
-    """Raised when a sidecar disagrees with the transcription it annotates."""
+    """Raised when a sidecar is malformed or disagrees with its evaluation input."""
 
 
 def load_annotation(
@@ -177,6 +180,8 @@ def load_annotation(
     reference: str,
     *,
     content: bytes | None = None,
+    expected_page_id: str | None = None,
+    expected_policy_version: str | None = None,
 ) -> Annotation:
     """Load and validate a sidecar against the text it annotates.
 
@@ -184,24 +189,68 @@ def load_annotation(
     silently corrupt the name numbers, so a mismatch is fatal rather than a
     warning.
     """
-    source = path.read_bytes() if content is None else content
-    raw = json.loads(source.decode("utf-8"))
+    try:
+        source = path.read_bytes() if content is None else content
+    except OSError as exc:
+        raise AnnotationError(f"{path.name}: annotation could not be read: {exc}") from exc
+    try:
+        raw = json.loads(source.decode("utf-8"))
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise AnnotationError(
+            f"{path.name}: annotation is not valid UTF-8 JSON: {exc}"
+        ) from exc
+    if not isinstance(raw, dict):
+        raise AnnotationError(f"{path.name}: annotation root must be a JSON object")
+
+    if expected_page_id is not None and raw.get("page_id") != expected_page_id:
+        raise AnnotationError(
+            f"{path.name}: annotation declares page_id {raw.get('page_id')!r}; "
+            f"expected {expected_page_id!r}"
+        )
+    if (
+        expected_policy_version is not None
+        and raw.get("policy_version") != expected_policy_version
+    ):
+        raise AnnotationError(
+            f"{path.name}: annotation uses policy {raw.get('policy_version')!r}; "
+            f"expected {expected_policy_version!r}"
+        )
+
+    raw_spans = raw.get("spans", [])
+    if not isinstance(raw_spans, list):
+        raise AnnotationError(f"{path.name}: spans must be a list")
     spans: list[Span] = []
-    for item in raw.get("spans", []):
-        start, end = int(item["start"]), int(item["end"])
+    for index, item in enumerate(raw_spans):
+        if not isinstance(item, dict):
+            raise AnnotationError(f"{path.name}: span {index} must be an object")
+        start, end = item.get("start"), item.get("end")
+        if (
+            isinstance(start, bool)
+            or not isinstance(start, int)
+            or isinstance(end, bool)
+            or not isinstance(end, int)
+        ):
+            raise AnnotationError(
+                f"{path.name}: span {index} must have integer start and end"
+            )
         if not 0 <= start < end <= len(reference):
             raise AnnotationError(
                 f"{path.name}: span [{start}:{end}] out of bounds "
                 f"for a {len(reference)}-character page"
             )
         declared = item.get("text")
+        if declared is not None and not isinstance(declared, str):
+            raise AnnotationError(f"{path.name}: span {index} text must be a string")
         actual = reference[start:end]
         if declared is not None and declared != actual:
             raise AnnotationError(
                 f"{path.name}: span [{start}:{end}] declares {declared!r} "
                 f"but the transcription has {actual!r}"
             )
-        spans.append(Span(start, end, item.get("type", "unknown"), actual))
+        span_type = item.get("type", "unknown")
+        if not isinstance(span_type, str) or not span_type:
+            raise AnnotationError(f"{path.name}: span {index} type must be a string")
+        spans.append(Span(start, end, span_type, actual))
 
     spans.sort(key=lambda s: s.start)
     for a, b in zip(spans, spans[1:]):
@@ -211,9 +260,20 @@ def load_annotation(
                 f"[{b.start}:{b.end}] overlap"
             )
 
+    raw_uncertain = raw.get("uncertain", [])
+    if not isinstance(raw_uncertain, list):
+        raise AnnotationError(f"{path.name}: uncertain must be a list")
     uncertain = []
-    for pair in raw.get("uncertain", []):
-        start, end = int(pair[0]), int(pair[1])
+    for index, pair in enumerate(raw_uncertain):
+        if (
+            not isinstance(pair, list)
+            or len(pair) != 2
+            or any(isinstance(value, bool) or not isinstance(value, int) for value in pair)
+        ):
+            raise AnnotationError(
+                f"{path.name}: uncertain item {index} must be a two-integer range"
+            )
+        start, end = pair
         if not 0 <= start < end <= len(reference):
             raise AnnotationError(
                 f"{path.name}: uncertain range [{start}:{end}] out of bounds"
@@ -407,7 +467,13 @@ def evaluate(gt_dir: Path, hyp_dir: Path, page_ids: list[str],
 
         ann = Annotation()
         if ann_path is not None and ann_bytes is not None:
-            ann = load_annotation(ann_path, ref, content=ann_bytes)
+            ann = load_annotation(
+                ann_path,
+                ref,
+                content=ann_bytes,
+                expected_page_id=page_id,
+                expected_policy_version=policy_version,
+            )
 
         row = {
             "page_id": page_id,

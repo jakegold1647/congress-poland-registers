@@ -49,6 +49,11 @@ the name-level accounting.
 Spans may not overlap each other. `uncertain` ranges may overlap spans; that
 is the normal case for a half-legible surname.
 
+The evaluator rejects a present sidecar unless it is a UTF-8 JSON object, its spans and
+uncertainty ranges have the documented types, and its `page_id` and `policy_version` match the
+page and policy being scored. These failures are reported as concise annotation errors with a
+nonzero exit status; malformed input does not produce a partial score or a Python traceback.
+
 ## How the evaluator uses it
 
 - **Page CER/WER** are computed on the full text, exactly, by edit distance.

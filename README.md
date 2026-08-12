@@ -97,6 +97,8 @@ DATASET_CARD.md    provenance, rights, and composition
 
 Transcriptions stay clean: name spans and uncertainty flags live in a JSON
 sidecar, specified in [docs/annotation-format.md](docs/annotation-format.md).
+Direct evaluation validates each present sidecar's UTF-8 JSON structure, page identity, and
+normalization-policy identity before scoring it.
 Machine-readable evaluator output identifies these semantics as
 `report_version: evaluation-1.2.0`; the normalization policy remains a separate,
 explicit field because report shape and transcription policy are different contracts.

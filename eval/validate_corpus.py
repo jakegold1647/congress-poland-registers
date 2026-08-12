@@ -131,7 +131,8 @@ def _load_sidecar(
     findings: list[dict],
 ) -> None:
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
+        source = path.read_bytes()
+        raw = json.loads(source.decode("utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         _add_finding(
             findings,
@@ -189,17 +190,8 @@ def _load_sidecar(
         )
 
     try:
-        load_annotation(path, reference)
-    except (
-        AnnotationError,
-        IndexError,
-        KeyError,
-        OSError,
-        TypeError,
-        ValueError,
-        UnicodeError,
-        json.JSONDecodeError,
-    ) as exc:
+        load_annotation(path, reference, content=source)
+    except AnnotationError as exc:
         _add_finding(
             findings,
             "ANNOTATION_INVALID",
